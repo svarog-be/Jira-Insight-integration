@@ -1,3 +1,3 @@
-Connect-CIServer -Server dc.rtcloud.ru -User p.morozov -Password "10Rhensitr" -Org otlnal
+Connect-CIServer -Server dc.rtcloud.ru -User p.morozov -Password "pass" -Org otlnal
 
 Get-CIVM
