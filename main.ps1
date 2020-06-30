@@ -72,8 +72,7 @@ function jira_changeAtr {
     )
     $json = '{"attributes":[{"objectTypeAttributeId":' + $id_atr +',"objectAttributeValues":[{"value": "' + $value_atr +'"}]}]}'
     $uri = 'https://jira.otlnal.ru/rest/insight/1.0/object/' + $id_object + ''
-    Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
-    $json
+    $out = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json # -ErrorVariable a -ErrorAction SilentlyContinue | Out-Null
     
 }
 
@@ -94,7 +93,7 @@ function jira_changeAtr3 {
     {"objectTypeAttributeId":' + $id_atr3 +',"objectAttributeValues":[{"value": "' + $value_atr3 +'"}]} 
     ]}'
     $uri = 'https://jira.otlnal.ru/rest/insight/1.0/object/' + $id_object + ''
-    Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
     
 }
 
@@ -118,9 +117,37 @@ function jira_changeAtr4 {
     {"objectTypeAttributeId":' + $id_atr4 +',"objectAttributeValues":[{"value": "' + $value_atr4 +'"}]} 
     ]}'
     $uri = 'https://jira.otlnal.ru/rest/insight/1.0/object/' + $id_object + ''
-    Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
     
 }
+
+function jira_changeAtr5 {
+    param (
+        $value_atr1,
+        $value_atr2,
+        $value_atr3,
+        $value_atr4,
+        $value_atr5,
+        $id_object,
+        $id_atr1,
+        $id_atr2,
+        $id_atr3,
+        $id_atr4,
+        $id_atr5,
+        $Headers_jira
+    )
+    $json = '{"attributes":[  
+    {"objectTypeAttributeId":' + $id_atr1 +',"objectAttributeValues":[{"value": "' + $value_atr1 +'"}]} , 
+    {"objectTypeAttributeId":' + $id_atr2 +',"objectAttributeValues":[{"value": "' + $value_atr2 +'"}]} ,
+    {"objectTypeAttributeId":' + $id_atr3 +',"objectAttributeValues":[{"value": "' + $value_atr3 +'"}]} ,
+    {"objectTypeAttributeId":' + $id_atr4 +',"objectAttributeValues":[{"value": "' + $value_atr4 +'"}]} ,
+    {"objectTypeAttributeId":' + $id_atr5 +',"objectAttributeValues":[{"value": "' + $value_atr5 +'"}]} 
+    ]}'
+    $uri = 'https://jira.otlnal.ru/rest/insight/1.0/object/' + $id_object + ''
+    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    
+}
+
 
 function jira_CreateObject {
     param (
@@ -203,14 +230,13 @@ Function Connect-Zabbix {
         $False {$Protocol = "http"}
         $True {$Protocol = "https"}
     }
-    $BodyJSON
     $URL = $Protocol+"://$IPAdress/zabbix"
     $Res = Invoke-RestMethod ("$URL/api_jsonrpc.php") -ContentType "application/json" -Body $BodyJSON -Method Post
 
     if (($Res | Get-Member | Select-Object -ExpandProperty Name) -contains "result") {
         #Connection successful
         $Global:ZabbixSession = $Res | Select-Object jsonrpc,@{Name="Session";Expression={$_.Result}},id,@{Name="URL";Expression={$URL}}
-        Write-Host ("Successfuly connected to " + $URL)
+        #Write-Host ("Successfuly connected to " + $URL)
     }
     else {
         #Connection error
@@ -306,9 +332,11 @@ function get_list_object_jira {
     return $jira_object
 }
 
-$user = "p.morozov"
-$pass = "10Rhensitr"
-$domain = '@otlnal'
+$config = Get-Content (join-path -path $PSScriptRoot -childpath '/config.json') | Out-String | ConvertFrom-Json
+
+$user = $config.cred.user
+$pass = $config.cred.pass
+$domain = $config.cred.domain
 
 $Headers_jira = jira_auth -user $user -pass $pass
 
@@ -317,7 +345,6 @@ $jira_host = get_list_object_jira -Headers_jira $Headers_jira -object_Type_Id "2
 
 # get list Database ( JIRA )
 $jira_db = get_list_object_jira -Headers_jira $Headers_jira -object_Type_Id "13"
-
 
 # get list hypervisor ( JIRA )
 $jira_hypervisor = get_list_object_jira -Headers_jira $Headers_jira -object_Type_Id "34"
@@ -329,16 +356,33 @@ $zabbix_host = Get-ZabbixHost | where-object error -eq ""
 $filter_zabbix_host = $zabbix_host | 
 where-object { ($_.status -eq 0) -and ($_.name -notlike "sw-*") -and ($_.name -notlike "gw-*") -and ($_.name -notlike "10.*") } 
 
+# RTCloud auth
+$Headers_rtcloud = rtcloud_auth -user $user -pass $pass -domain $domain
+
 # get list VM ( RTCloud ) 
 # Важные поля: ft name, momoryMB, numberofcpus, status, storageProfileName, guestOs
-$Headers_rtcloud = rtcloud_auth -user $user -pass $pass -domain $domain
 $rtcloud_Response = Invoke-WebRequest -Uri 'https://dc.rtcloud.ru/api/vms/query?pageSize=128' -Method GET -Headers $Headers_rtcloud
 [xml]$vm_rtcloud = $rtcloud_Response.content
 $filter_vm_rtcloud = $vm_rtcloud.QueryResultRecords.VMRecord | where-object {$_.container -notlike "https://dc.rtcloud.ru/api/vAppTemplate*"}
 
+# get list VDC ( RTCloud ) 
+<#
+$vdc_rtcloud.name
+$vdc_rtcloud.VCpuInMhz2 # MHz core
+$vdc_rtcloud.ResourceEntities.ResourceEntity # list vApp
+$vdc_rtcloud.ComputeCapacity.cpu # 
+$vdc_rtcloud.ComputeCapacity.memory #
+#>
+$vdc_rtcloud = @()
+foreach ($i in $config.rtcloud_vdc_id) {
+    $rtcloud_Response = Invoke-WebRequest -Uri ('https://dc.rtcloud.ru/api/vdc/' + $i) -Method GET -Headers $Headers_rtcloud
+    [xml]$vdc_rtcloud_xml = $rtcloud_Response.content
+    $vdc_rtcloud += $vdc_rtcloud_xml.vdc
+}
+
 # get list database ( MSSQL ) 
 # Доступные поля: Containment Type, Collation, Owner, Compat. Level, Recovery model, space avalible, Size, Status, Name
-$list_mssql_instance = @("SQL-GRIND", "1c_sql", "NSK-BSV-QA2", "adwh", "nsk-sqleps-01", "SQL-1C2", "srv-luxbasedb-1", "SQLCLU2-1" )
+$list_mssql_instance = $config.MSSQL
 $mssql_database = @()
 $hashtable_db_server = @{}
 foreach ($i in $list_mssql_instance){
@@ -381,6 +425,8 @@ foreach($i in $jira_db.objectEntries){
     $hashtable_jira_db[$i.name]=$i.id
 }
 
+###################################
+
 # add object: database ( MSSQL -> Jira ) 
 foreach($i in $mssql_database){
     if ($jira_db.objectEntries.name -notcontains $i.name){
@@ -393,20 +439,28 @@ foreach ($i in $mssql_database){
     jira_changeAtr4 -Headers_jira $Headers_jira -id_object $hashtable_jira_db[$i.name] -id_atr1 460 -id_atr2 461 -id_atr3 459 -value_atr1  (MBtoGB -in ($i.Size)) -value_atr2 (MBtoGB -in ($i.SpaceAvailable / 1024 ) ) -value_atr3 $i.RecoveryModel -id_atr4 161 -value_atr4 $hashtable_jira_host[$hashtable_db_server[$i.name]]
 }
 
-# change attr: online -> host ( Powershell test-connection -> Jira ) 
+# change attr: online -> host ( Powershell test-connection -> Jira )
 foreach ($i in $jira_host.objectentries ){
-    if ((test-connection -Count 1 $i.name -quiet) -eq $True) {
-        jira_changeAtr -value_atr "1" -id_object $i.id -id_atr "436"
+    if ((test-connection -Count 1 $i.name -quiet -ErrorAction SilentlyContinue ) -eq $True) {
+        jira_changeAtr -value_atr "1" -id_object $i.id -id_atr "436" -Headers_jira $headers_jira
     } else {
-        jira_changeAtr -value_atr "7" -id_object $i.id -id_atr "436"
+        jira_changeAtr -value_atr "7" -id_object $i.id -id_atr "436" -Headers_jira $headers_jira
     }
 }
 
 # change attr: ip -> host ( Powershell Resolve-DnsName -> Jira ) 
+$change_ok = @()
+$change_error = @()
 foreach ($i in $jira_host.objectentries ){
-    $ip = Resolve-DnsName $i.name
-    jira_changeAtr -value_atr $ip.IPAddress -id_object $i.id -id_atr "387"
+    if ( ($ip = Resolve-DnsName $i.name -ErrorAction SilentlyContinue) -ne 'Null'){
+        jira_changeAtr -value_atr $ip.IPAddress -id_object $i.id -id_atr "387" -Headers_jira $headers_jira
+        $change_ok += $i
+    }else {
+        $change_error += $i
+    }
 }
+$change_ok.count + ' : change attr: ip -> host ( Powershell Resolve-DnsName -> Jira )'
+$change_error.count + ' : ERROR change attr: ip -> host ( Powershell Resolve-DnsName -> Jira )'
 
 <#
 # change attr: OS, RAM -> host ( Powershell Get-ComputerInfo -> Jira ) 
@@ -426,9 +480,9 @@ foreach ($i in $jira_host.objectentries ){
 # change attr: status zabbix -> host ( Zabbix -> Jira ) 
 foreach ($i in $jira_host.objectEntries) { # 
 	if ( $filter_zabbix_host.name -contains  $i.label ) {
-        jira_changeAtr -value_atr "1" -id_object $i.id -id_atr "435"
+        jira_changeAtr -value_atr "1" -id_object $i.id -id_atr "435" -Headers_jira $headers_jira
 	}else { 
-        jira_changeAtr -value_atr "7" -id_object $i.id -id_atr "435"
+        jira_changeAtr -value_atr "7" -id_object $i.id -id_atr "435" -Headers_jira $headers_jira
     }
 }
 
@@ -439,47 +493,43 @@ foreach ($i in $filter_vm_rtcloud) {
 	if ( $jira_host.objectEntries.label -notcontains  $i.name ) {
         $res = jira_CreateObject -objectTypeId "2" -id_atr_name "6" -name_object $i.name -Headers_jira $headers_jira
         $res = $res.content | convertfrom-json
-        jira_changeAtr -id_atr 383 -id_object $res.id -value_atr $hashtable_rtcloud_jira_vdc[$i.vdc] 
+        jira_changeAtr -id_atr 383 -id_object $res.id -value_atr $hashtable_rtcloud_jira_vdc[$i.vdc] -Headers_jira $headers_jira
 	}
 }
 
 # change attr: CPU -> Host ( RTCloud -> Jira )
 foreach ($i in $filter_vm_rtcloud){
-    jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "437" -value_atr $i.numberOfCpus
+    jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "437" -value_atr $i.numberOfCpus -Headers_jira $headers_jira
     #$hashtable_jira_host[$i.name] # id
 }
 
 # change attr: RAM -> Host ( RTCloud -> Jira )
 foreach ($i in $filter_vm_rtcloud){
-    jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "513" -value_atr ([math]::Round($i.memoryMB / 1024, 1))  -replace ("," , ".")
+    jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "513" -value_atr ([math]::Round($i.memoryMB / 1024, 1))  -replace ("," , ".") -Headers_jira $headers_jira
     #$hashtable_jira_host[$i.name] # id
 }
 
 # change attr: OS -> Host ( RTCloud -> Jira )
 foreach ($i in $filter_vm_rtcloud){
-    jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "431" -value_atr $i.guestOs
+    jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "431" -value_atr $i.guestOs -Headers_jira $headers_jira
+}
+
+# change attr: GHz ядро (438), Доступно логических процессоров (439), used cores (532), Allocated RAM (533), used RAM (534) 
+# -> Hypervisor ( RTCloud -> Jira )
+foreach ($i in $vdc_rtcloud){
+    jira_changeAtr5 -id_object $hashtable_jira_vdc[$i.name] -id_atr1 "438" -value_atr1 ($i.VCpuInMhz2 / 1000 ) -id_atr2 "439" -value_atr2 ($i.ComputeCapacity.cpu.Allocated / $i.VCpuInMhz2 ) -id_atr3 "532" -value_atr3 ($i.ComputeCapacity.cpu.used / $i.VCpuInMhz2 ) -id_atr4 "533" -value_atr4 ($i.ComputeCapacity.memory.Allocated / 1024) -id_atr5 "534" -value_atr5 ($i.ComputeCapacity.memory.used / 1024) -Headers_jira $headers_jira
 }
 
 # create hashtable RTCloud VM (name VM : GHz core )
 $hashtable_jira_GHz = @{}
 foreach ($i in $filter_vm_rtcloud){
-    if ($i.vdc -eq "https://dc.rtcloud.ru/api/vdc/319bde7e-d2e2-4098-b8e7-f8f30884d283"){
-        # otlnal 2.5
-        $hashtable_jira_GHz[$i.name]=2.5
-        #jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "383" -value_atr "136"
-    }
-    if ($i.vdc -eq "https://dc.rtcloud.ru/api/vdc/31ed76b7-229a-4949-ac7d-ebe0ae7c990f"){
-        # otlnal 1.0
-        $hashtable_jira_GHz[$i.name]=1.0
-        #jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "383" -value_atr "134"
-    }
-    if ($i.vdc -eq "https://dc.rtcloud.ru/api/vdc/0f871e7f-4a1a-4bb8-9779-c5fe422c1753"){
-        # otlnal 3.0
-        $hashtable_jira_GHz[$i.name]=3.0
-        #jira_changeAtr -id_object $hashtable_jira_host[$i.name] -id_atr "383" -value_atr "137"
+    foreach($ii in $vdc_rtcloud){
+        if ($i.vdc -eq $ii.href){
+            $hashtable_jira_GHz[$i.name] = ( $ii.VCpuInMhz2 / 1000 )
+            break
+        }
     }
 }
-
 
 # change attr: cost -> host ( RTCloud -> Jira )
 #! вынести стоимость каждого ресурса в конфиг
@@ -500,12 +550,12 @@ foreach ($i in $filter_vm_rtcloud.href){
     $rub_cpu = [int]$disk_rtcloud.vm.VmSpecSection.NumCpus * 175 * 1.2 * [int]$hashtable_jira_GHz[$disk_rtcloud.vm.name]
     $rub_ram = $disk_rtcloud.vm.VmSpecSection.MemoryResourceMb.Configured / 1024 * 250 * 1.2
     $rub_all = $rub_all_disk + $rub_cpu + $rub_ram
-    jira_changeAtr -value_atr ([int]$rub_all) -id_object $hashtable_jira_host[$disk_rtcloud.vm.name] -id_atr "512"
+    jira_changeAtr -value_atr ([int]$rub_all) -id_object $hashtable_jira_host[$disk_rtcloud.vm.name] -id_atr "512" -Headers_jira $headers_jira
 }
 
 # change attr: Hypervisor -> host ( RTCloud -> Jira )
 foreach ($i in $filter_vm_rtcloud){
-    jira_changeAtr -id_atr 383 -id_object $hashtable_jira_host[$i.name] -value_atr $hashtable_rtcloud_jira_vdc[$i.vdc] 
+    jira_changeAtr -id_atr 383 -id_object $hashtable_jira_host[$i.name] -value_atr $hashtable_rtcloud_jira_vdc[$i.vdc] -Headers_jira $headers_jira
 }
 
 
@@ -524,18 +574,23 @@ foreach ($i in $iis_site){
     }else {$i.state = "7"}
 }
 $iis_site = $iis_site | Where-Object {$_.name -ne 'Default Web Site'} # Default Web Site есть на каждом инстансе и не имеет смысла добавлять его в JIRA
-# get iis path sites ( IIS -> JIRA ) 
+# get iis path sites ( IIS ) 
 $list_iis_path_sites = @()
 $list_iis_path_sites += Invoke-Command -ComputerName $list_iis -ScriptBlock { (Get-IISServerManager).sites | foreach { [pscustomobject]@{Name=$_.Name; path=$_.Applications.VirtualDirectories.PhysicalPath}} }
 $list_iis_path_sites = $list_iis_path_sites | Where-Object {$_.name -ne 'Default Web Site'} # Default Web Site есть на каждом инстансе и не имеет смысла добавлять его в JIRA
 
+# get list site ( JIRA )
+# $jira_site.objectEntries.id/name
+$jira_site = get_list_object_jira -Headers_jira $Headers_jira -object_Type_Id "50"
+
 # add object: site ( IIS -> Jira )
 foreach ($i in $iis_site){
-    jira_CreateObject -objectTypeId "50" -id_atr_name "522" -name_object $i.name -Headers_jira $headers_jira
+    if ($jira_site.objectEntries.name -notcontains $i.name ){
+        jira_CreateObject -objectTypeId "50" -id_atr_name "522" -name_object $i.name -Headers_jira $headers_jira
+    }
 }
 
-# get list site ( JIRA )
-$jira_site = get_list_object_jira -Headers_jira $Headers_jira -object_Type_Id "50"
+    
 
 # create hashtable jira site (name site : id )
 $hashtable_jira_site = @{}
@@ -546,7 +601,7 @@ foreach($i in $jira_site.objectEntries){
 # change attr: PhysicalPath ( IIS -> Jira ) 
 foreach ($i in $list_iis_path_sites) {
     $shielding = $i.path -replace '\\','\\' 
-    jira_changeAtr -Headers_jira $Headers_jira -id_atr 531 -id_object $hashtable_jira_site[$i.name] -value_atr $shielding
+    jira_changeAtr -Headers_jira $Headers_jira -id_atr 531 -id_object $hashtable_jira_site[$i.name] -value_atr $shielding 
 }
 
 
@@ -562,8 +617,6 @@ foreach ($i in  $jira_site.objectEntries){
     }
 }
 ###########################
-
-
 
 # delete object: database ( MSSQL -> Jira ) 
 foreach ($i in  $jira_db.objectEntries){
