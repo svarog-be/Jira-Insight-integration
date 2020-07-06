@@ -340,7 +340,7 @@ function Get-JiraObject {
         $Headers_jira
     )
 
-    $response = Invoke-WebRequest -Uri ('https://jira.' + $config.domain + 'rest/insight/1.0/iql/objects?objectSchemaId=1&iql=objectTypeId=' + $object_Type_Id + '&resultPerPage=1000') -Method GET -Headers $Headers_jira 
+    $response = Invoke-WebRequest -Uri ('https://jira.' + $config.domain + '/rest/insight/1.0/iql/objects?objectSchemaId=1&iql=objectTypeId=' + $object_Type_Id + '&resultPerPage=1000') -Method GET -Headers $Headers_jira 
     $jira_object = $response.content | convertfrom-json
     #$jira_host.objectEntries.label
 
@@ -369,7 +369,7 @@ $Headers_jira = get-JiraAuthHeader -user $config.cred.user -pass $config.cred.pa
 # get list Object_Type_Attributes ( JIRA )
 $jira_Object_Type_Attributes = Get-JiraFindObjectTypeAttributes -object_schema_id $config.jira.object_schema_id
 
-# get list Host ( JIRA )
+# get Host ( JIRA )
 $jira_host = Get-JiraObject -Headers_jira $Headers_jira -object_Type_Id "2"
 
 # create hashtable jira VM (name vm : id )
@@ -653,18 +653,23 @@ foreach ($i in $iis_site){
 }
 
 # delete object: site ( IIS -> Jira ) 
-foreach ($i in  $jira_site.objectEntries){
-    if ($iis_site.name -notcontains $i.name){
-        Remove-JiraObject -Headers_jira $Headers_jira -id_object $hashtable_jira_site[$i.name]
+if ($iis_site -ne "Null" ){
+    foreach ($i in  $jira_site.objectEntries){
+        if ($iis_site.name -notcontains $i.name){
+            Remove-JiraObject -Headers_jira $Headers_jira -id_object $hashtable_jira_site[$i.name]
+        }
     }
 }
 
 # delete object: database ( MSSQL -> Jira ) 
-foreach ($i in  $jira_db.objectEntries){
-    if ($mssql_database.name -notcontains $i.name){
-        Remove-JiraObject -Headers_jira $Headers_jira -id_object $hashtable_jira_db[$i.name]
+if ($mssql_database -ne "Null"){
+    foreach ($i in  $jira_db.objectEntries){
+        if ($mssql_database.name -notcontains $i.name){
+            Remove-JiraObject -Headers_jira $Headers_jira -id_object $hashtable_jira_db[$i.name]
+        }
     }
 }
+
 
 # change attr: cost allocated, cost used -> hypervisor ( RTCloud -> Jira ) 
 # get list VdcStorageProfile $rtcloud_disk ( RTCloud )

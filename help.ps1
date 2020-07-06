@@ -30,53 +30,9 @@ https://docs.ukcloud.com/articles/vmware/vmw-how-interact-vcd-api-powershell.htm
 # json 
 https://jsoneditoronline.org
 
-# для ртклауда
+# vCenter RTCloud
 Install-Module VMware.VimAutomation.Core -AllowClobber
 
+Connect-CIServer -Server dc.rtcloud.ru -User p.morozov -Password "pass" -Org otlnal
 
-$params = @{"@type"="login";
- "username"="xxx@gmail.com";
- "password"="yyy";
-}
-
-Invoke-WebRequest -Uri http://foobar.com/endpoint -Method POST -Body ($params|ConvertTo-Json) -ContentType "application/json"
-#############
-$body = @{
-    "UserSessionId"="12345678"
-    "OptionalEmail"="MyEmail@gmail.com"
-   } | ConvertTo-Json
-   
-   $header = @{
-    "Accept"="application/json"
-    "connectapitoken"="97fe6ab5b1a640909551e36a071ce9ed"
-    "Content-Type"="application/json"
-   } 
-   
-   Invoke-RestMethod -Uri "http://MyServer/WSVistaWebClient/RESTService.svc/member/search" -Method 'Post' -Body $body -Headers $header | ConvertTo-HTML
-   ##############
-
-
-
-   $user = 'austin.luu91@gmail.com'
-   $pass = #API_KEY
-   
-   $pair = "$($user):$($pass)"
-   
-   $encodedCreds = [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($pair))
-   
-   $basicAuthValue = "Basic $encodedCreds"
-   
-   $Headers = @{
-   Authorization = $basicAuthValue
-   }
-   
-
-Invoke-WebRequest -Uri 'https://15sof1.atlassian.net/rest/api/3/OPS-117' -Method POST -Headers $Headers -SessionVariable session -ContentType 'application / json' 
-######################
-Invoke-WebRequest -Method Post -Uri "https://15sof1.atlassian.net/rest/api/3/session" -Headers $ headers -SessionVariable session -ContentType 'application / json' 
-
-
-$ InitiateBackup = Invoke-WebRequest -Method Post -Headers @ {"Accept" = "application / json"} -Uri "https://15sof1.atlassian.net/rest/api/3/backup/export/runbackup" -WebSession $ session -ContentType 'application / json' -Body $ bodyjson -Verbose | ConvertTo-Json -Compress | Из-Null
-
-# запуск exe
-& ′C:\Program Files\Hello.exe′
+Get-CIVM
