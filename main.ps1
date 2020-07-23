@@ -162,6 +162,35 @@ function Set-JiraAttribute5 {
     
 }
 
+function Set-JiraAttribute6 {
+    param (
+        $value_atr1,
+        $value_atr2,
+        $value_atr3,
+        $value_atr4,
+        $value_atr5,
+        $value_atr6,
+        $id_object,
+        $id_atr1,
+        $id_atr2,
+        $id_atr3,
+        $id_atr4,
+        $id_atr5,
+        $id_atr6,
+        $Headers_jira
+    )
+    $json = '{"attributes":[  
+    {"objectTypeAttributeId":' + $id_atr1 +',"objectAttributeValues":[{"value": "' + $value_atr1 +'"}]} , 
+    {"objectTypeAttributeId":' + $id_atr2 +',"objectAttributeValues":[{"value": "' + $value_atr2 +'"}]} ,
+    {"objectTypeAttributeId":' + $id_atr3 +',"objectAttributeValues":[{"value": "' + $value_atr3 +'"}]} ,
+    {"objectTypeAttributeId":' + $id_atr4 +',"objectAttributeValues":[{"value": "' + $value_atr4 +'"}]} ,
+    {"objectTypeAttributeId":' + $id_atr5 +',"objectAttributeValues":[{"value": "' + $value_atr5 +'"}]} ,
+    {"objectTypeAttributeId":' + $id_atr6 +',"objectAttributeValues":[{"value": "' + $value_atr6 +'"}]} 
+    ]}'
+    $uri = 'https://jira.' + $config.domain + '/rest/insight/1.0/object/' + $id_object + ''
+    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    
+}
 
 function Add-JiraObject {
     param (
@@ -483,7 +512,7 @@ $iis_site = $iis_site | Where-Object {$_.name -ne 'Default Web Site'} # Default 
 
 # get iis path sites ( IIS ) 
 $list_iis_path_sites = @()
-$list_iis_path_sites += Invoke-Command -ComputerName $list_iis -ScriptBlock { (Get-IISServerManager).sites | foreach { [pscustomobject]@{Name=$_.Name; path=$_.Applications.VirtualDirectories.PhysicalPath}} }
+$list_iis_path_sites += Invoke-Command -ComputerName $config.iis -ScriptBlock { (Get-IISServerManager).sites | foreach { [pscustomobject]@{Name=$_.Name; path=$_.Applications.VirtualDirectories.PhysicalPath}} }
 $list_iis_path_sites = $list_iis_path_sites | Where-Object {$_.name -ne 'Default Web Site'} # Default Web Site есть на каждом инстансе и не имеет смысла добавлять его в JIRA
 
 
@@ -504,9 +533,14 @@ foreach($i in $mssql_database){
 
 # change attr: type, size, available size -> database ( MSSQL -> Jira ) 
 foreach ($i in $mssql_database){
-    Set-JiraAttribute4 -Headers_jira $Headers_jira -id_object $hashtable_jira_db[$i.name] -id_atr1 460 -id_atr2 461 -id_atr3 459 -value_atr1  (Format-MBtoGB -in ($i.Size)) -value_atr2 (Format-MBtoGB -in ($i.SpaceAvailable / 1024 ) ) -value_atr3 $i.RecoveryModel -id_atr4 161 -value_atr4 $hashtable_jira_host[$hashtable_db_server[$i.name]]
+    Set-JiraAttribute4 -Headers_jira $Headers_jira -id_object $hashtable_jira_db[$i.name] `
+    -id_atr1 460 -value_atr1  (Format-MBtoGB -in ($i.Size)) `
+    -id_atr2 461 -value_atr2 (Format-MBtoGB -in ($i.SpaceAvailable / 1024 ) ) `
+    -id_atr3 459 -value_atr3 $i.RecoveryModel `
+    -id_atr4 161 -value_atr4 $hashtable_jira_host[$hashtable_db_server[$i.name]]
 }
 
+<#
 # change attr: online -> host ( Powershell test-connection -> Jira )
 foreach ($i in $jira_host.objectentries ){
     if ((test-connection -Count 1 $i.name -quiet -ErrorAction SilentlyContinue ) -eq $True) {
@@ -515,6 +549,7 @@ foreach ($i in $jira_host.objectentries ){
         Set-JiraAttribute -value_atr "7" -id_object $i.id -id_atr "436" -Headers_jira $headers_jira
     }
 }
+#>
 
 <#
 # change attr: ip -> host ( Powershell Resolve-DnsName -> Jira ) 
@@ -573,27 +608,27 @@ foreach ($i in $filter_vm_rtcloud) {
 	}
 }
 
-# change attr: CPU -> Host ( RTCloud -> Jira )
+# change attr: Hypervisor, OS, CPU, RAM -> Host ( RTCloud -> Jira )
 foreach ($i in $filter_vm_rtcloud){
-    Set-JiraAttribute -id_object $hashtable_jira_host[$i.name] -id_atr "437" -value_atr $i.numberOfCpus -Headers_jira $headers_jira
+    $tmp = if($i.status -eq "POWERED_ON") {"1"}else {"7"}
+    Set-JiraAttribute5 -id_object $hashtable_jira_host[$i.name] -Headers_jira $headers_jira `
+    -id_atr1 513 -value_atr1 ([math]::Round($i.memoryMB / 1024, 1))  -replace ("," , ".") `
+    -id_atr2 437 -value_atr2 $i.numberOfCpus `
+    -id_atr3 431 -value_atr3 $i.guestOs `
+    -id_atr4 383 -value_atr4 $hashtable_rtcloud_jira_vdc[$i.vdc] `
+    -id_atr5 436 -value_atr5 $tmp
     #$hashtable_jira_host[$i.name] # id
-}
-
-# change attr: RAM -> Host ( RTCloud -> Jira )
-foreach ($i in $filter_vm_rtcloud){
-    Set-JiraAttribute -id_object $hashtable_jira_host[$i.name] -id_atr "513" -value_atr ([math]::Round($i.memoryMB / 1024, 1))  -replace ("," , ".") -Headers_jira $headers_jira
-    #$hashtable_jira_host[$i.name] # id
-}
-
-# change attr: OS -> Host ( RTCloud -> Jira )
-foreach ($i in $filter_vm_rtcloud){
-    Set-JiraAttribute -id_object $hashtable_jira_host[$i.name] -id_atr "431" -value_atr $i.guestOs -Headers_jira $headers_jira
 }
 
 # change attr: GHz ядро (438), Доступно логических процессоров (439), used cores (532), Allocated RAM (533), used RAM (534) 
 # -> Hypervisor ( RTCloud -> Jira )
 foreach ($i in $vdc_rtcloud){
-    Set-JiraAttribute5 -id_object $hashtable_jira_vdc[$i.name] -id_atr1 "438" -value_atr1 ($i.VCpuInMhz2 / 1000 ) -id_atr2 "439" -value_atr2 ($i.ComputeCapacity.cpu.Allocated / $i.VCpuInMhz2 ) -id_atr3 "532" -value_atr3 ($i.ComputeCapacity.cpu.used / $i.VCpuInMhz2 ) -id_atr4 "533" -value_atr4 ($i.ComputeCapacity.memory.Allocated / 1024) -id_atr5 "534" -value_atr5 ($i.ComputeCapacity.memory.used / 1024) -Headers_jira $headers_jira
+    Set-JiraAttribute5 -id_object $hashtable_jira_vdc[$i.name] -Headers_jira $headers_jira `
+    -id_atr1 438 -value_atr1 ($i.VCpuInMhz2 / 1000 )  `
+    -id_atr2 439 -value_atr2 ($i.ComputeCapacity.cpu.Allocated / $i.VCpuInMhz2 ) `
+    -id_atr3 532 -value_atr3 ($i.ComputeCapacity.cpu.used / $i.VCpuInMhz2 ) `
+    -id_atr4 533 -value_atr4 ($i.ComputeCapacity.memory.Allocated / 1024) `
+    -id_atr5 534 -value_atr5 ($i.ComputeCapacity.memory.used / 1024) 
 }
 
 # create hashtable RTCloud VM (name VM : GHz core )
@@ -629,11 +664,6 @@ foreach ($i in $filter_vm_rtcloud.href){
     Set-JiraAttribute -value_atr ([int]$rub_all) -id_object $hashtable_jira_host[$disk_rtcloud.vm.name] -id_atr "512" -Headers_jira $headers_jira
 }
 
-# change attr: Hypervisor -> host ( RTCloud -> Jira )
-foreach ($i in $filter_vm_rtcloud){
-    Set-JiraAttribute -id_atr 383 -id_object $hashtable_jira_host[$i.name] -value_atr $hashtable_rtcloud_jira_vdc[$i.vdc] -Headers_jira $headers_jira
-}
-
 # add object: site ( IIS -> Jira )
 foreach ($i in $iis_site){
     if ($jira_site.objectEntries.name -notcontains $i.name ){
@@ -649,7 +679,8 @@ foreach ($i in $list_iis_path_sites) {
 
 # change attr: server, bindings, state -> site ( IIS -> Jira ) 
 foreach ($i in $iis_site){
-    Set-JiraAttribute3 -Headers_jira $Headers_jira -id_object $hashtable_jira_site[$i.name] -id_atr1 525 -id_atr2 526 -id_atr3 527 -value_atr1 ($hashtable_jira_host[$i.PSComputerName]) -value_atr2 $i.Bindings -value_atr3 $i.state
+    Set-JiraAttribute3 -Headers_jira $Headers_jira -id_object $hashtable_jira_site[$i.name] `
+    -id_atr1 525 -id_atr2 526 -id_atr3 527 -value_atr1 ($hashtable_jira_host[$i.PSComputerName]) -value_atr2 $i.Bindings -value_atr3 $i.state
 }
 
 # delete object: site ( IIS -> Jira ) 
@@ -700,6 +731,57 @@ foreach ($i in $rtcloud_vdc) { # стоимость дисков в одном �
 
     $a = [int]$rub_all
     $b = [int]$rub_used
-    Set-JiraAttribute2 -id_atr1 536 -value_atr1 $a -id_atr2 537 -value_atr2 $b -id_object $hashtable_jira_vdc[$i.name] -Headers_jira $Headers_jira
+    Set-JiraAttribute2 -id_object $hashtable_jira_vdc[$i.name] -Headers_jira $Headers_jira `
+    -id_atr1 536 -value_atr1 $a `
+    -id_atr2 537 -value_atr2 $b
     
+}
+
+############ Hyper-V
+
+import-module Hyper-V -Prefix hyperv
+$HyperVhost = Get-hypervVM -ComputerName ($config.hyperv)
+<#
+$HyperVhost.VMName # 6
+$HyperVhost.ProcessorCount # 437
+$HyperVhost.MemoryAssigned # 513
+$HyperVhost.MemoryDemand
+$HyperVhost.State # 436
+$HyperVhost.Version
+$HyperVhost.SizeOfSystemFiles
+$HyperVhost.ComputerName # 383
+#>
+
+# add object: VM (host)  ( Hyper-V -> Jira )
+foreach ($i in $HyperVhost) { 
+	if ( $jira_host.objectEntries.label -notcontains  $i.name ) {
+        $res = Add-JiraObject -objectTypeId "2" -id_atr_name "6" -name_object $i.name -Headers_jira $headers_jira
+	}
+}
+
+# change attr: core (host), RAM (host), online (host), hypervisor (host) -> hypervisor ( Powershell Get-VM -> Jira ) 
+foreach ($i in $HyperVhost) {
+    $tmp = if($i.state -eq "Running") {"1"}else {"7"}
+    Set-JiraAttribute4 -Headers_jira $Headers_jira -id_object $hashtable_jira_host[$i.VMName] `
+    -id_atr1 437 -value_atr1 $i.ProcessorCount `
+    -id_atr2 513 -value_atr2 ([math]::Round(($i.MemoryAssigned / 1073741824),1))  `
+    -id_atr3 436 -value_atr3 $tmp `
+    -id_atr4 383 -value_atr4 $hashtable_jira_vdc[$i.ComputerName]
+    $i.VMName
+}
+
+
+
+$HyperVHypervisor = Get-hypervVMHost -ComputerName ($config.hyperv)
+<#
+$HyperVHypervisor.ComputerName # 377
+$HyperVHypervisor.LogicalProcessorCount # 439
+([math]::Floor($HyperVHypervisor.MemoryCapacity / 1073741824)) # 533
+#>
+
+# change attr: Allocated cores, Allocated RAM -> hypervisor ( Powershell Get-VMHost -> Jira ) 
+foreach ($i in $HyperVHypervisor) {
+    Set-JiraAttribute2 -id_object $hashtable_jira_vdc[$i.ComputerName] -Headers_jira $Headers_jira `
+    -id_atr1 439 -value_atr1 $i.LogicalProcessorCount `
+    -id_atr2 533 -value_atr2 ([math]::Floor($i.MemoryCapacity / 1073741824)) 
 }

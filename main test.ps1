@@ -132,7 +132,6 @@ function Set-JiraAttribute4 {
     ]}'
     $uri = 'https://jira.' + $config.domain + '/rest/insight/1.0/object/' + $id_object + ''
     $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
-    
 }
 
 function Set-JiraAttribute5 {
@@ -359,25 +358,30 @@ function Get-JiraFindObjectTypeAttributes {
 # read config
 $config = Get-Content (join-path -path $PSScriptRoot -childpath '/config.json') | Out-String | ConvertFrom-Json
 
+# get list hypervisor ( JIRA )
+$jira_hypervisor = Get-JiraObject -Headers_jira $Headers_jira -object_Type_Id "34"
+$filter_jira_hypervisor_rtcloud = $jira_hypervisor.objectEntries | where-object {$_.name -like "otlnal-*"}
 
+# create hashtable jira hypervosir (name hypervisor : id )
+$hashtable_jira_vdc = @{}
+foreach($i in $jira_hypervisor.objectEntries){
+    $hashtable_jira_vdc[$i.name]=$i.id
+}
 
-#import-module Hyper-V
-#$HyperVhost = Get-VM -ComputerName ($config.hyperv[4])
-<#
-VMName
-ProcessorCount
-MemoryAssigned
-MemoryDemand
-State
-Version
-SizeOfSystemFiles
-ComputerName
-#>
-
-#Get-VMHost -ComputerName ($config.hyperv[4])
-<#
-ComputerName
-MemoryCapacity
-#>
-
+# get Host ( JIRA )
 $jira_host = Get-JiraObject -Headers_jira $Headers_jira -object_Type_Id "2"
+
+# create hashtable jira VM (name vm : id )
+$hashtable_jira_host = @{}
+foreach($i in $jira_host.objectEntries){
+    $hashtable_jira_host[$i.name]=$i.id
+}
+##################################################################################
+# change attr: OS, CPU, RAM -> Host ( RTCloud -> Jira )
+foreach ($i in $filter_vm_rtcloud){
+    Set-JiraAttribute3 -id_object $hashtable_jira_host[$i.name] -Headers_jira $headers_jira `
+    -id_atr1 513 -value_atr1 ([math]::Round($i.memoryMB / 1024, 1))  -replace ("," , ".") `
+    -id_atr2 437 -value_atr2 $i.numberOfCpus `
+    -id_atr3 431 -value_atr3 $i.guestOs 
+    #$hashtable_jira_host[$i.name] # id
+}
