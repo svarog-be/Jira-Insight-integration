@@ -377,11 +377,9 @@ foreach($i in $jira_host.objectEntries){
     $hashtable_jira_host[$i.name]=$i.id
 }
 ##################################################################################
-# change attr: OS, CPU, RAM -> Host ( RTCloud -> Jira )
-foreach ($i in $filter_vm_rtcloud){
-    Set-JiraAttribute3 -id_object $hashtable_jira_host[$i.name] -Headers_jira $headers_jira `
-    -id_atr1 513 -value_atr1 ([math]::Round($i.memoryMB / 1024, 1))  -replace ("," , ".") `
-    -id_atr2 437 -value_atr2 $i.numberOfCpus `
-    -id_atr3 431 -value_atr3 $i.guestOs 
-    #$hashtable_jira_host[$i.name] # id
-}
+# https://kb.selectel.ru/docs/cloud-services/vmware/faq/
+
+для московских ресурсов: vcd-msk.selectel.ru;
+для ресурсов в Санкт-Петербурге: vcd.selectel.ru.
+
+У нас используется vCloud Director 9.7, который поддерживает версии API 20.0-32.0.
