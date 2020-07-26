@@ -56,7 +56,7 @@ function Set-JiraAttribute2 {
     {"objectTypeAttributeId":' + $id_atr2 +',"objectAttributeValues":[{"value": "' + $value_atr2 +'"}]} 
     ]}'
     $uri = 'https://jira.' + $config.domain + '/rest/insight/1.0/object/' + $id_object + ''
-    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    $out = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
     
 }
 
@@ -77,7 +77,7 @@ function Set-JiraAttribute3 {
     {"objectTypeAttributeId":' + $id_atr3 +',"objectAttributeValues":[{"value": "' + $value_atr3 +'"}]} 
     ]}'
     $uri = 'https://jira.' + $config.domain + '/rest/insight/1.0/object/' + $id_object + ''
-    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    $out = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
     
 }
 
@@ -101,7 +101,7 @@ function Set-JiraAttribute4 {
     {"objectTypeAttributeId":' + $id_atr4 +',"objectAttributeValues":[{"value": "' + $value_atr4 +'"}]} 
     ]}'
     $uri = 'https://jira.' + $config.domain + '/rest/insight/1.0/object/' + $id_object + ''
-    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    $out = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
     
 }
 
@@ -128,7 +128,7 @@ function Set-JiraAttribute5 {
     {"objectTypeAttributeId":' + $id_atr5 +',"objectAttributeValues":[{"value": "' + $value_atr5 +'"}]} 
     ]}'
     $uri = 'https://jira.' + $config.domain + '/rest/insight/1.0/object/' + $id_object + ''
-    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    $out = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
     
 }
 
@@ -158,7 +158,7 @@ function Set-JiraAttribute6 {
     {"objectTypeAttributeId":' + $id_atr6 +',"objectAttributeValues":[{"value": "' + $value_atr6 +'"}]} 
     ]}'
     $uri = 'https://jira.' + $config.domain + '/rest/insight/1.0/object/' + $id_object + ''
-    $a = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
+    $out = Invoke-WebRequest -Uri $uri  -Method PUT -Headers $Headers_jira -Body $json
     
 }
 
