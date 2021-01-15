@@ -1,0 +1,56 @@
+{
+    "iis": [
+           
+       ],
+    "cred": {
+        "rtcloud": {
+            "user": 
+            "pass": 
+        },
+        "zabbix": {
+            "user": "",
+            "pass": ""
+        },
+        "jira": {
+            "user": "",
+            "pass": ""
+        },
+        "selectel": {
+            "id_user": "",
+            "pass": ""
+        },
+        "awx": {
+            "id_user": "",
+            "pass": ""
+        },
+        "domain": ""
+        
+    },
+    "MSSQL": [
+           "",
+           ""
+       ],
+    "jira": {
+        "object_schema_id": "1"
+        },
+    "rtcloud": {
+        "cost":
+        {
+            "RAM": ,
+            "CPU": ,
+            "disk" :{
+                "": ,
+                "": ,
+                "": ,
+                "": 
+            },
+            "NDS": 1.2
+        }
+    },
+    "domain": "",
+    "HyperV": [
+        "",
+        ""
+    ],
+    "log_path": ""
+}
